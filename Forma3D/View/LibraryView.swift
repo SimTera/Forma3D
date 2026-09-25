@@ -55,7 +55,7 @@ struct LibraryView: View {
     private var objectsList: some View {
         List {
             ForEach(scannedObjects) { object in
-                NavigationLink(destination: Text("Detalle de \(object.name)")) {
+                NavigationLink(destination: ObjectDetailView(object: object)) {
                     objectRow(for: object)
                 }
                 .listRowBackground(Color.white.opacity(0.05))
