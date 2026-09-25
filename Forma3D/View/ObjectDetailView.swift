@@ -177,14 +177,14 @@ struct ObjectDetailView: View {
                 .onChanged { value in
                     let sensitivity: Float = 0.25
                     let delta = (Float(value.magnification) - 1.0) * sensitivity
-                    gestureScale = max(0.5, min(2.0, 1.0 + delta))
+                    gestureScale = max(0.5, min(3.5, 1.0 + delta))
                 }
                 .onEnded { value in
                     let sensitivity: Float = 0.25
                     let delta = (Float(value.magnification) - 1.0) * sensitivity
                     let appliedDelta = 1.0 + delta
                     
-                    currentScale = max(0.4, min(3.0, currentScale * appliedDelta))
+                    currentScale = max(0.4, min(11.0, currentScale * appliedDelta))
                     gestureScale = 1.0
                 }
             
