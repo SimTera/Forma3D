@@ -19,6 +19,7 @@ struct ObjectDetailView: View {
         @State private var orientation = simd_quatf(angle: 0, axis: [0, 1, 0])
         @State private var dragOffset: CGSize = .zero
         
+        @State private var baseScale: Float = 1.0
         @State private var currentScale: Float = 1.0
         @State private var gestureScale: Float = 1.0
     
@@ -95,8 +96,9 @@ struct ObjectDetailView: View {
                             let maxDimension = max(bounds.extents.x, max(bounds.extents.y, bounds.extents.z))
                             if maxDimension > 0 {
                                 let targetSize: Float = 0.25 // ~25 cm virtuales en pantalla
-                                let baseScale = targetSize / maxDimension
-                                rootAnchor.scale = SIMD3<Float>(repeating: baseScale)
+                                let initialScale = targetSize / maxDimension
+                                baseScale = initialScale
+                                rootAnchor.scale = SIMD3<Float>(repeating: initialScale)
                             }
                             
                             rootAnchor.addChild(modelEntity)
@@ -117,10 +119,8 @@ struct ObjectDetailView: View {
                         rootAnchor.orientation = yawQuat * pitchQuat * orientation
                         
                         // Escala reactiva
-                        let effectiveScaleFactor = max(0.3, min(4.0, gestureScale))
-                        let baseScale = rootAnchor.scale.x / (currentScale > 0 ? currentScale : 1.0)
-                        let finalScale = baseScale * currentScale * effectiveScaleFactor
-                        rootAnchor.scale = SIMD3<Float>(repeating: finalScale)
+                        let effectiveZoom = currentScale * gestureScale
+                        rootAnchor.scale = SIMD3<Float>(repeating: baseScale * effectiveZoom)
                     } placeholder: {
                         ProgressView("Cargando modelo 3D...")
                             .tint(.white)
@@ -172,13 +172,19 @@ struct ObjectDetailView: View {
                     dragOffset = .zero
                 }
             
-            // Gesto de magnificación / zoom
+            // Gesto de magnificación / zoom con amortiguacion
             let magnify = MagnifyGesture()
                 .onChanged { value in
-                    gestureScale = Float(value.magnification)
+                    let sensitivity: Float = 0.25
+                    let delta = (Float(value.magnification) - 1.0) * sensitivity
+                    gestureScale = max(0.5, min(2.0, 1.0 + delta))
                 }
                 .onEnded { value in
-                    currentScale = max(0.3, min(4.0, currentScale * Float(value.magnification)))
+                    let sensitivity: Float = 0.25
+                    let delta = (Float(value.magnification) - 1.0) * sensitivity
+                    let appliedDelta = 1.0 + delta
+                    
+                    currentScale = max(0.4, min(3.0, currentScale * appliedDelta))
                     gestureScale = 1.0
                 }
             
