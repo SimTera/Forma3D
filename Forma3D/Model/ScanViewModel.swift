@@ -94,7 +94,7 @@ final class ScanViewModel {
             try photogrammetrySession.process(requests: [.modelFile(url: finalModelURL)])
             
             // Monitorizar outputs del procesamiento fotogramétrico
-            for try await output in photogrammetrySession.outputs {
+            processingLoop: for try await output in photogrammetrySession.outputs {
                 switch output {
                 case .requestProgress(let request, let fractionComplete):
                     if case .modelFile = request {
@@ -111,6 +111,7 @@ final class ScanViewModel {
                     
                 case .processingComplete:
                     print("✅ Procesamiento fotogramétrico completado")
+                    break processingLoop
                     
                 case .requestError(let request, let error):
                     if case .modelFile = request {
@@ -119,6 +120,7 @@ final class ScanViewModel {
                     
                 case .processingCancelled:
                     print("⚠️ Procesamiento cancelado")
+                    break processingLoop
                     
                 case .invalidSample(id: let id, reason: let reason):
                     print("⚠️ Muestra inválida [\(id)]: \(reason)")
@@ -163,17 +165,27 @@ final class ScanViewModel {
                 relativeARObjectPath: relativeARObject,
                 fileSizeBytes: fileSizeBytes
             )
-            modelContext.insert(newObject)
-            try modelContext.save()
+            await MainActor.run {
+                modelContext.insert(newObject)
+                do {
+                    try modelContext.save()
+                    print("💾 Objeto guardado con éxito en SwiftData: \(newObject.name)")
+                } catch {
+                    print("❌ Error guardando en SwiftData: \(error)")
+                }
+                
+                self.isReconstructing = false
+                self.scanCompleted = true
+            }
             
             // 5. Limpieza de temporales
             try? FileManager.default.removeItem(at: scanFolderURL)
             
-            isReconstructing = false
-            scanCompleted = true
         } catch {
-            errorMessage = "Fallo en la reconstrucción: \(error.localizedDescription)"
-            isReconstructing = false
+            await MainActor.run {
+                self.errorMessage = "Fallo en la reconstrucción: \(error.localizedDescription)"
+                self.isReconstructing = false
+            }
         }
     }
 }

@@ -115,15 +115,31 @@ struct ScanView: View {
             }
             
         case .capturing:
-            // Capturando fotos: Mostrar botón de finalizar cuando complete la órbita
+            // Capturando fotos: Mostrar botón de finalizar cuando complete la órbita, opcion enriquecer modelo
             if session.userCompletedScanPass {
-                actionButton(
-                    title: "Finalizar y Guardar",
-                    icon: "checkmark.circle.fill",
-                    color: .blue
-                ) {
-                    showSaveDialog = true
+                VStack(spacing: 12) {
+                    // Opción 1: Procesar con los datos actuales
+                    actionButton(
+                        title: "Finalizar y Procesar",
+                        icon: "checkmark.circle.fill",
+                        color: .blue
+                    ) {
+                        showSaveDialog = true
+                    }
+                    
+                    // Opción 2: Continuar con otra altura (por ejemplo, a 45° desde arriba)
+                    actionButton(
+                        title: "Capturar otro ángulo (+ Detalle)",
+                        icon: "arrow.triangle.2.circlepath",
+                        color: .secondary
+                    ) {
+                        // Inicia una nueva pasada orbital sobre la misma sesión
+                        session.beginNewScanPass()
+                    }
                 }
+            } else {
+                // Durante la captura, ObjectCaptureView dibuja su propia cúpula y flechas nativas
+                EmptyView()
             }
             
         default:
