@@ -1,33 +1,45 @@
 //
 //  LibraryView.swift
-//  3D Scanner Module
+//  Forma3D
 //
-//  Vista de biblioteca con SwiftData Query
+//  Created by Victor Munera on 20/09/2026.
+//
+//  Vista de biblioteca con gestión completa de objetos escaneados
 //
 
 import SwiftUI
 import SwiftData
 
-@MainActor
 struct LibraryView: View {
-    @Environment(\.dismiss) private var dismiss
+    // MARK: - SwiftData
+    @Environment(\.modelContext) private var modelContext
+    
     @Query(sort: \ScannedObject.dateScanned, order: .reverse)
     private var scannedObjects: [ScannedObject]
-    
+
+    // MARK: - Body
     var body: some View {
         ZStack {
             backgroundGradient
             
             if scannedObjects.isEmpty {
-                emptyStateView
+                // API moderna de SwiftUI para estados vacíos
+                ContentUnavailableView(
+                    "Biblioteca Vacía",
+                    systemImage: "cube.transparent",
+                    description: Text("Escanea y modela tu primer objeto 3D para verlo aquí.")
+                )
+                .foregroundStyle(.white)
             } else {
                 objectsList
             }
         }
         .navigationTitle("Biblioteca")
         .navigationBarTitleDisplayMode(.large)
+        .preferredColorScheme(.dark)
     }
-    
+
+    // MARK: - Views
     private var backgroundGradient: some View {
         LinearGradient(
             colors: [
@@ -39,30 +51,65 @@ struct LibraryView: View {
         )
         .ignoresSafeArea()
     }
-    
-    private var emptyStateView: some View {
-        VStack(spacing: 32) {
-            Image(systemName: "cube.transparent")
-                .font(.system(size: 100))
-                .foregroundStyle(.purple.opacity(0.6))
-            
-            Text("Biblioteca Vacía")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundStyle(.white)
-            
-            Text("Escanea tu primer objeto")
-                .font(.body)
-                .foregroundStyle(.white.opacity(0.7))
-        }
-    }
-    
+
     private var objectsList: some View {
-        List(scannedObjects) { object in
-            Text(object.name)
-                .foregroundStyle(.white)
+        List {
+            ForEach(scannedObjects) { object in
+                NavigationLink(destination: Text("Detalle de \(object.name)")) {
+                    objectRow(for: object)
+                }
+                .listRowBackground(Color.white.opacity(0.05))
+            }
+            .onDelete(perform: deleteObjects)
         }
         .scrollContentBackground(.hidden)
+    }
+    
+    private func objectRow(for object: ScannedObject) -> some View {
+        HStack(spacing: 16) {
+            // Icono o miniatura
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 54, height: 54)
+                
+                Image(systemName: "cube.fill")
+                    .font(.title2)
+                    .foregroundStyle(.purple)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(object.name)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                HStack(spacing: 8) {
+                    Text(object.formattedDate)
+                    Text("•")
+                    Text(object.formattedFileSize)
+                }
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.6))
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - Actions
+    private func deleteObjects(at offsets: IndexSet) {
+        for index in offsets {
+            let object = scannedObjects[index]
+            
+            // 1. Borrar archivos físicos asociados en disco para no dejar huérfanos
+            try? FileManager.default.removeItem(at: object.modelURL)
+            try? FileManager.default.removeItem(at: object.arObjectURL)
+            if let thumbURL = object.thumbnailURL {
+                try? FileManager.default.removeItem(at: thumbURL)
+            }
+            
+            // 2. Borrar registro en SwiftData
+            modelContext.delete(object)
+        }
     }
 }
 
@@ -72,3 +119,5 @@ struct LibraryView: View {
             .modelContainer(for: ScannedObject.self, inMemory: true)
     }
 }
+
+

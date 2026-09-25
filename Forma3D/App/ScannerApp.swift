@@ -1,6 +1,8 @@
 //
 //  ScannerApp.swift
-//  3D Scanner Module
+//  Forma3D
+//
+//  Created by Victor Munera on 20/09/2026.
 //
 //  Aplicación de escaneo 3D con soporte para Object Capture API
 //  iOS 26+ | Swift 6 | Strict Concurrency

@@ -1,59 +1,61 @@
 //
 //  MainMenuView.swift
-//  3D Scanner Module
+//  Forma3D
 //
-//  Vista principal del menú con navegación a las 3 funcionalidades principales
-//  Utiliza Liquid Glass para un diseño moderno y fluido
+//  Created by Victor Munera on 20/09/2026.
+//
+//  Vista principal del menú con navegación tipada a las 3 funcionalidades
 //
 
 import SwiftUI
 
-@MainActor
+// MARK: - Navigation Destinations
+enum AppDestination: Hashable {
+    case scan
+    case library
+    case identify
+}
+
 struct MainMenuView: View {
-    // MARK: - State Properties
-    @State private var showScanView = false
-    @State private var showLibraryView = false
-    @State private var showIdentifyView = false
-    @State private var animateTitle = false
+    // MARK: - Navigation State
+    @State private var navigationPath = NavigationPath()
+    @State private var animateHeader = false
     
     // MARK: - Body
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ZStack {
-                // Fondo animado con gradiente
                 backgroundGradient
                 
-                // Contenido principal
                 VStack(spacing: 0) {
-                    // Header con título
                     headerView
                     
                     Spacer()
                     
-                    // Botones principales con Liquid Glass
                     buttonsContainer
                     
                     Spacer()
                     
-                    // Footer con información de versión
                     footerView
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 32)
             }
-            .navigationDestination(isPresented: $showScanView) {
-                ScanView()
-            }
-            .navigationDestination(isPresented: $showLibraryView) {
-                LibraryView()
-            }
-            .navigationDestination(isPresented: $showIdentifyView) {
-                IdentifyView()
+            // Navegación tipada moderna centralizada
+            .navigationDestination(for: AppDestination.self) { destination in
+                switch destination {
+                case .scan:
+                    ScanView()
+                case .library:
+                    LibraryView()
+                case .identify:
+                    IdentifyView()
+                }
             }
         }
         .onAppear {
-            withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.2)) {
-                animateTitle = true
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.1)) {
+                animateHeader = true
             }
         }
     }
@@ -75,7 +77,6 @@ struct MainMenuView: View {
     // MARK: - Header
     private var headerView: some View {
         VStack(spacing: 12) {
-            // Icono principal
             Image(systemName: "cube.transparent.fill")
                 .font(.system(size: 64, weight: .light))
                 .foregroundStyle(
@@ -85,10 +86,9 @@ struct MainMenuView: View {
                         endPoint: .bottomTrailing
                     )
                 )
-                .symbolEffect(.pulse, value: animateTitle)
+                .symbolEffect(.pulse, value: animateHeader)
                 .shadow(color: .cyan.opacity(0.5), radius: 20, x: 0, y: 0)
             
-            // Título
             Text("3D Scanner")
                 .font(.system(size: 44, weight: .bold, design: .rounded))
                 .foregroundStyle(
@@ -99,62 +99,53 @@ struct MainMenuView: View {
                     )
                 )
                 .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
-                .scaleEffect(animateTitle ? 1.0 : 0.8)
-                .opacity(animateTitle ? 1.0 : 0.0)
             
-            // Subtítulo
             Text("Escanea, Guarda e Identifica")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.7))
-                .scaleEffect(animateTitle ? 1.0 : 0.8)
-                .opacity(animateTitle ? 1.0 : 0.0)
         }
+        .scaleEffect(animateHeader ? 1.0 : 0.85)
+        .opacity(animateHeader ? 1.0 : 0.0)
         .padding(.top, 20)
     }
     
     // MARK: - Buttons Container
     private var buttonsContainer: some View {
         VStack(spacing: 24) {
-            // Botón SCAN
             CustomButton(
                 title: "SCAN",
                 icon: "viewfinder.circle.fill",
                 gradientColors: [.blue, .cyan]
             ) {
-                showScanView = true
+                navigationPath.append(AppDestination.scan)
             }
-            .transition(.scale.combined(with: .opacity))
             
-            // Botón LIBRARY
             CustomButton(
                 title: "LIBRARY",
                 icon: "square.stack.3d.up.fill",
                 gradientColors: [.purple, .pink]
             ) {
-                showLibraryView = true
+                navigationPath.append(AppDestination.library)
             }
-            .transition(.scale.combined(with: .opacity))
             
-            // Botón IDENTIFY
             CustomButton(
                 title: "IDENTIFY",
                 icon: "sparkles.rectangle.stack.fill",
                 gradientColors: [.orange, .red]
             ) {
-                showIdentifyView = true
+                navigationPath.append(AppDestination.identify)
             }
-            .transition(.scale.combined(with: .opacity))
         }
     }
     
     // MARK: - Footer
     private var footerView: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
             Text("v1.0.0 Beta")
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.5))
             
-            Text("iOS 26+ • Swift 6")
+            Text("Swift 6 • RealityKit")
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.4))
         }
@@ -163,7 +154,7 @@ struct MainMenuView: View {
 }
 
 // MARK: - Preview
-//#Preview {
-//    MainMenuView()
-//        .modelContainer(for: ScannedObject.self, inMemory: true)
-//}
+#Preview {
+    MainMenuView()
+}
+
