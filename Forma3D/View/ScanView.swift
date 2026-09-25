@@ -4,7 +4,8 @@
 //
 //  Created by Victor Munera on 20/09/2026.
 //
-//  Vista de escaneo 3D (Placeholder para Object Capture API)
+//  Vista de escaneo 3D con ObjectCaptureView nativo de Apple
+//  Gestiona el flujo completo: detección → captura → procesamiento
 //
 
 import SwiftUI
@@ -12,46 +13,40 @@ import RealityKit
 import SwiftData
 
 struct ScanView: View {
+    // MARK: - Environment
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
+    // MARK: - State
     @State private var viewModel = ScanViewModel()
     @State private var objectName = ""
     @State private var showSaveDialog = false
 
+    // MARK: - Body
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             
             if let session = viewModel.session, !viewModel.isReconstructing {
-                // Vista estándar de Apple con guías de escaneo y feedback en pantalla
+                // Vista nativa de Apple con guías AR y feedback en tiempo real
                 ObjectCaptureView(session: session)
                     .ignoresSafeArea()
                 
-                // Controles superpuestos cuando el usuario completa la captura
-                if session.userCompletedScanPass {
-                    VStack {
-                        Spacer()
-                        
-                        Button {
-                            showSaveDialog = true
-                        } label: {
-                            Label("Finalizar y Modelar", systemImage: "checkmark.circle.fill")
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(.blue)
-                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                .padding(.horizontal, 24)
-                                .padding(.bottom, 20)
-                        }
-                    }
+                // Controles contextuales según estado del escaneo
+                VStack {
+                    Spacer()
+                    
+                    bottomControls(for: session)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 30)
                 }
+                
             } else if viewModel.isReconstructing {
                 // Pantalla de procesamiento fotogramétrico
                 reconstructionOverlay
+                
             } else {
+                // Estado inicial: cargando sesión
                 ProgressView("Iniciando escáner...")
                     .foregroundStyle(.white)
             }
@@ -73,28 +68,96 @@ struct ScanView: View {
         } message: {
             Text("Introduce un nombre descriptivo para identificarlo más adelante.")
         }
-        .onChange(of: viewModel.scanCompleted) { _, completed in
-            if completed {
+        .onChange(of: viewModel.scanCompleted) { _, newValue in
+            if newValue {
                 dismiss()
             }
         }
-        .alert("Aviso", isPresented: .constant(viewModel.errorMessage != nil)) {
+        .alert(
+            "Aviso",
+            isPresented: Binding(
+                get: { viewModel.errorMessage != nil },
+                set: { if !$0 { viewModel.errorMessage = nil } }
+            )
+        ) {
             Button("Entendido") {
                 viewModel.errorMessage = nil
-                dismiss()
             }
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
     }
     
-    // MARK: - Reconstrucción UI
+    // MARK: - Bottom Controls
+    /// Botones contextuales que cambian según el estado de ObjectCaptureSession
+    @ViewBuilder
+    private func bottomControls(for session: ObjectCaptureSession) -> some View {
+        switch session.state {
+        case .ready:
+            // Estado inicial: Usuario enfoca el objeto y fija el bounding box
+            actionButton(
+                title: "Fijar Objeto",
+                icon: "viewfinder",
+                color: .blue
+            ) {
+                _ = session.startDetecting()
+//                session.startDetecting()
+            }
+            
+        case .detecting:
+            // Ajustando caja delimitadora: Confirmar para iniciar la captura de fotos
+            actionButton(
+                title: "Iniciar Escaneo",
+                icon: "record.circle",
+                color: .green
+            ) {
+                session.startCapturing()
+            }
+            
+        case .capturing:
+            // Capturando fotos: Mostrar botón de finalizar cuando complete la órbita
+            if session.userCompletedScanPass {
+                actionButton(
+                    title: "Finalizar y Guardar",
+                    icon: "checkmark.circle.fill",
+                    color: .blue
+                ) {
+                    showSaveDialog = true
+                }
+            }
+            
+        default:
+            EmptyView()
+        }
+    }
+    
+    // MARK: - Action Button
+    /// Botón de acción reutilizable con diseño consistente
+    private func actionButton(
+        title: String,
+        icon: String,
+        color: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.headline)
+                .foregroundStyle(.white)
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(color)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+    
+    // MARK: - Reconstruction Overlay
+    /// Pantalla de procesamiento fotogramétrico con barra de progreso
     private var reconstructionOverlay: some View {
         VStack(spacing: 24) {
             ProgressView(value: viewModel.reconstructionProgress, total: 1.0)
-                .progressViewStyle(.circular)
-                .scaleEffect(2.0)
+                .progressViewStyle(.linear)
                 .tint(.cyan)
+                .scaleEffect(x: 1.0, y: 2.0)
             
             VStack(spacing: 8) {
                 Text("Generando modelo 3D...")
@@ -113,13 +176,14 @@ struct ScanView: View {
                     .padding(.horizontal, 32)
             }
         }
+        .padding()
     }
 }
 
+// MARK: - Preview
 #Preview {
     NavigationStack {
         ScanView()
             .modelContainer(for: ScannedObject.self, inMemory: true)
     }
 }
-
