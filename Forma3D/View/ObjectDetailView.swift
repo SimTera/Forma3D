@@ -53,7 +53,7 @@ struct ObjectDetailView: View {
         @ViewBuilder
         private var modelViewerSection: some View {
             if FileManager.default.fileExists(atPath: object.modelURL.path(percentEncoded: false)) {
-                #if os(visionOS) || os(macOS)
+#if os(visionOS) || os(macOS)
                 // Visor nativo con volumen espacial para visionOS / macOS
                 Model3D(url: object.modelURL) { phase in
                     switch phase {
@@ -66,35 +66,83 @@ struct ObjectDetailView: View {
                             .scaledToFit()
                             .padding(24)
                     case .failure(let error):
-                        VStack(spacing: 8) {
-                            Image(systemName: "exclamationmark.triangle")
-                                .font(.largeTitle)
-                                .foregroundStyle(.orange)
-                            Text("No se pudo renderizar el modelo.")
-                                .font(.subheadline)
-                                .foregroundStyle(.white)
-                            Text(error.localizedDescription)
-                                .font(.caption2)
-                                .foregroundStyle(.white.opacity(0.6))
-                        }
-                        .padding()
+                        ContentUnavailableView(
+                            "Error al cargar",
+                            systemImage: "exclamationmark.triangle",
+                            description: Text(error.localizedDescription)
+                        )
                     @unknown default:
                         EmptyView()
                     }
                 }
-                #else
+#else
                 // Visor nativo RealityView para iOS 18+
-                RealityView { content in
-                    do {
-                        let entity = try await Entity(contentsOf: object.modelURL)
-                        entity.position = [0, 0, 0]
-                        content.add(entity)
-                    } catch {
-                        print("Error cargando Entity en RealityView: \(error)")
+                ZStack {
+                    RealityView { content in
+                        do {
+                            let rootAnchor = Entity()
+                            rootAnchor.name = "rootAnchor"
+                            
+                            let modelEntity = try await Entity(contentsOf: object.modelURL)
+                            modelEntity.name = "modelEntity"
+                            
+                            // 1. Centrar el pivote del modelo usando su BoundingBox real
+                            let bounds = modelEntity.visualBounds(relativeTo: nil)
+                            let center = bounds.center
+                            modelEntity.position = -center
+                            
+                            // 2. Normalizar escala para que quepa en el visor si es muy grande o muy pequeño
+                            let maxDimension = max(bounds.extents.x, max(bounds.extents.y, bounds.extents.z))
+                            if maxDimension > 0 {
+                                let targetSize: Float = 0.25 // ~25 cm virtuales en pantalla
+                                let baseScale = targetSize / maxDimension
+                                rootAnchor.scale = SIMD3<Float>(repeating: baseScale)
+                            }
+                            
+                            rootAnchor.addChild(modelEntity)
+                            content.add(rootAnchor)
+                        } catch {
+                            print("Error cargando Entity en RealityView: \(error)")
+                        }
+                    } update: { content in
+                        guard let rootAnchor = content.entities.first(where: { $0.name == "rootAnchor" }) else { return }
+                        
+                        // Rotación en tiempo real (inercia arrastre + orientación guardada)
+                        let pitchAngle = Float(dragOffset.height) * 0.015
+                        let yawAngle = Float(dragOffset.width) * 0.015
+                        
+                        let pitchQuat = simd_quatf(angle: pitchAngle, axis: [1, 0, 0])
+                        let yawQuat = simd_quatf(angle: yawAngle, axis: [0, 1, 0])
+                        
+                        rootAnchor.orientation = yawQuat * pitchQuat * orientation
+                        
+                        // Escala reactiva
+                        let effectiveScaleFactor = max(0.3, min(4.0, gestureScale))
+                        let baseScale = rootAnchor.scale.x / (currentScale > 0 ? currentScale : 1.0)
+                        let finalScale = baseScale * currentScale * effectiveScaleFactor
+                        rootAnchor.scale = SIMD3<Float>(repeating: finalScale)
+                    } placeholder: {
+                        ProgressView("Cargando modelo 3D...")
+                            .tint(.white)
                     }
-                } placeholder: {
-                    ProgressView("Cargando modelo 3D...")
-                        .tint(.white)
+                    .contentShape(Rectangle()) // Fuerza a toda el área a registrar toques
+                    .gesture(rotationAndScaleGesture)
+                    
+                    // Guía visual interactiva
+                    VStack {
+                        Spacer()
+                        HStack(spacing: 8) {
+                            Image(systemName: "hand.draw")
+                            Text("Arrastra con un dedo para rotar • Pellizca con dos para zoom")
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .padding(.bottom, 12)
+                    }
                 }
                 #endif
             } else {
@@ -109,13 +157,13 @@ struct ObjectDetailView: View {
     // MARK: - Gestures
         private var rotationAndScaleGesture: some Gesture {
             // Gesto de rotación en 2 ejes (Yaw y Pitch)
-            let drag = DragGesture(minimumDistance: 0)
+            let drag = DragGesture()
                 .onChanged { value in
                     dragOffset = value.translation
                 }
                 .onEnded { value in
-                    let pitchAngle = Float(value.translation.height) * 0.01
-                    let yawAngle = Float(value.translation.width) * 0.01
+                    let pitchAngle = Float(value.translation.height) * 0.015
+                    let yawAngle = Float(value.translation.width) * 0.015
                     let pitchQuat = simd_quatf(angle: pitchAngle, axis: [1, 0, 0])
                     let yawQuat = simd_quatf(angle: yawAngle, axis: [0, 1, 0])
                     
@@ -130,7 +178,7 @@ struct ObjectDetailView: View {
                     gestureScale = Float(value.magnification)
                 }
                 .onEnded { value in
-                    currentScale = max(0.2, min(5.0, currentScale * Float(value.magnification)))
+                    currentScale = max(0.3, min(4.0, currentScale * Float(value.magnification)))
                     gestureScale = 1.0
                 }
             
