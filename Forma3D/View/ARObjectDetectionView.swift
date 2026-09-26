@@ -29,9 +29,13 @@ struct ARObjectDetectionView: UIViewRepresentable {
 
     func updateUIView(_ uiView: ARView, context: Context) {
         if isActive {
-            context.coordinator.resume()
+            if !context.coordinator.isRunning {
+                context.coordinator.resume()
+            }
         } else {
-            context.coordinator.pause()
+            if !context.coordinator.isRunning {
+                context.coordinator.pause()
+            }
         }
         
         // Disparo bajo demanda
@@ -54,7 +58,7 @@ struct ARObjectDetectionView: UIViewRepresentable {
         private let onObjectDetected: ((ScannedObject) -> Void)?
         private weak var arView: ARView?
         //        private var detectedObjectIDs: Set<UUID> = [] // Lo quitamos
-        private var isRunning = false
+        private(set) var isRunning = false
         
         init(scannedObjects: [ScannedObject], onObjectDetected: ((ScannedObject) -> Void)?) {
             self.scannedObjects = scannedObjects
@@ -116,15 +120,27 @@ struct ARObjectDetectionView: UIViewRepresentable {
         
         // Identificación ejecutada al pulsar el botón del HUD
         func identifyCurrentView() {
-            guard let arView, let currentFrame = arView.session.currentFrame else { return }
+            guard let arView else {
+                print("⚠️ arView no disponible")
+                return
+            }
+            
+            guard let currentFrame = arView.session.currentFrame else {
+                print("⚠️ ARFrame no disponible aún (esperando a que el tracking se estabilice)")
+                return
+            }
+            
             let pixelBuffer = currentFrame.capturedImage
             
-            Task {
+            Task(priority: .userInitiated) {
+                let candidates = self.scannedObjects
                 if let matched = await ObjectRecognitionService.shared.identifyObject(
                     from: pixelBuffer,
-                    candidates: scannedObjects
+                    candidates: candidates
                 ) {
                     onObjectDetected?(matched)
+                } else {
+                    print("🔍 No se encontró coincidencia con el umbral actual.")
                 }
             }
         }

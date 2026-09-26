@@ -94,71 +94,90 @@ struct IdentifyView: View {
     }
 
     private var centerReticle: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [8, 6]))
-                .frame(width: 220, height: 220)
+        GeometryReader { geometry in
+            let side = min(geometry.size.width, geometry.size.height) * 0.72
             
-            Image(systemName: "viewfinder")
-                .font(.system(size: 40, weight: .ultraLight))
-                .foregroundStyle(.white.opacity(0.6))
-            
-            if isProcessingIdentification {
-                ProgressView()
-                    .tint(.white)
-                    .scaleEffect(1.2)
+            ZStack {
+                // Cuadro delimitador exterior
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        Color.white.opacity(0.4),
+                        style: StrokeStyle(lineWidth: 2, dash: [10, 8])
+                    )
+                    .frame(width: side, height: side)
+                
+                // Icono central sutil
+                Image(systemName: "viewfinder")
+                    .font(.system(size: 44, weight: .ultraLight))
+                    .foregroundStyle(.white.opacity(0.5))
+                
+                if isProcessingIdentification {
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(1.3)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(height: 320)
     }
 
     @ViewBuilder
     private var bottomCard: some View {
         if let object = identifiedObject {
             // Tarjeta de objeto detectado
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Objeto detectado")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.orange)
-                            .textCase(.uppercase)
-                        
-                        Text(object.name)
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.white)
-                    }
-                    
-                    Spacer()
-                    
-                    Button {
-                        withAnimation {
-                            identifiedObject = nil
+            VStack(spacing: 12) {
+                NavigationLink {
+                    ObjectDetailView(object: object)
+                } label: {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Objeto detectado")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(.orange)
+                                    .textCase(.uppercase)
+                                
+                                Text(object.name)
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.white)
+                            }
+                            
+                            Spacer()
+                            
+                            Button {
+                                withAnimation {
+                                    identifiedObject = nil
+                                }
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.white)
+                                    .padding(8)
+                                    .background(Color.white.opacity(0.15))
+                                    .clipShape(Circle())
+                            }
                         }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.subheadline)
-                            .foregroundStyle(.white)
-                            .padding(8)
-                            .background(Color.white.opacity(0.15))
-                            .clipShape(Circle())
+                        
+                        Divider().background(Color.white.opacity(0.15))
+                        
+                        HStack {
+                            Label(object.formattedDate, systemImage: "calendar")
+                            Spacer()
+                            Label(object.formattedFileSize, systemImage: "internaldrive")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.7))
                     }
+                    .padding(18)
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                
-                Divider().background(Color.white.opacity(0.15))
-                
-                HStack {
-                    Label(object.formattedDate, systemImage: "calendar")
-                    Spacer()
-                    Label(object.formattedFileSize, systemImage: "internaldrive")
-                }
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.7))
+                .buttonStyle(.plain)
             }
-            .padding(18)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .transition(.move(edge: .bottom).combined(with: .opacity))
         } else {
             // Guía de uso mientras escanea el entorno

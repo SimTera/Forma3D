@@ -58,6 +58,9 @@ final class ScanViewModel {
         
         // Finalizar la captura
         session.finish()
+        session.cancel()
+        self.session = nil
+        
         isReconstructing = true
         
         let objectID = UUID()
