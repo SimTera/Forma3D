@@ -142,6 +142,13 @@ final class ScanViewModel {
                 }
             }
             
+            // 1. Guardar miniatura de referencia para el fallback de Vision (iOS 18–26)
+            let previewURL = finalModelURL.deletingPathExtension().appendingPathExtension("jpg")
+            if let firstImage = try? FileManager.default.contentsOfDirectory(at: imagesFolderURL, includingPropertiesForKeys: nil)
+                .first(where: { $0.pathExtension.lowercased() == "jpg" || $0.pathExtension.lowercased() == "heic" }) {
+                try? FileManager.default.copyItem(at: firstImage, to: previewURL)
+            }
+            
             // 2. Persistencia del ancla ARObject
             if !FileManager.default.fileExists(atPath: finalARObjectURL.path(percentEncoded: false)) {
                 FileManager.default.createFile(

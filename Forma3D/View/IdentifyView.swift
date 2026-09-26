@@ -12,9 +12,13 @@ import SwiftData
 
 struct IdentifyView: View {
     // Consulta reactiva de todos los objetos escaneados en SwiftData
+    @Environment(\.scenePhase) private var scenePhase
     @Query private var scannedObjects: [ScannedObject]
+    
     @State private var identifiedObject: ScannedObject?
-    @State private var isScanningActive: Bool = true
+//    @State private var isScanningActive: Bool = true
+    @State private var isProcessingIdentification = false
+    @State private var triggerScan = false
 
     var body: some View {
         ZStack {
@@ -26,9 +30,14 @@ struct IdentifyView: View {
                     description: Text("Escanea y guarda primero un objeto para poder identificarlo.")
                 )
             } else {
-                ARObjectDetectionView(scannedObjects: scannedObjects) { detected in
+                ARObjectDetectionView(
+                    scannedObjects: scannedObjects,
+                    isActive: scenePhase == .active,
+                    triggerScan: $triggerScan
+                ) { detected in
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                         self.identifiedObject = detected
+                        self.isProcessingIdentification = false
                     }
                 }
                 .ignoresSafeArea()
@@ -89,10 +98,16 @@ struct IdentifyView: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.white.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [8, 6]))
                 .frame(width: 220, height: 220)
-
+            
             Image(systemName: "viewfinder")
                 .font(.system(size: 40, weight: .ultraLight))
                 .foregroundStyle(.white.opacity(0.6))
+            
+            if isProcessingIdentification {
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.2)
+            }
         }
     }
 
@@ -108,15 +123,15 @@ struct IdentifyView: View {
                             .fontWeight(.bold)
                             .foregroundStyle(.orange)
                             .textCase(.uppercase)
-
+                        
                         Text(object.name)
                             .font(.title3)
                             .fontWeight(.semibold)
                             .foregroundStyle(.white)
                     }
-
+                    
                     Spacer()
-
+                    
                     Button {
                         withAnimation {
                             identifiedObject = nil
@@ -130,9 +145,9 @@ struct IdentifyView: View {
                             .clipShape(Circle())
                     }
                 }
-
+                
                 Divider().background(Color.white.opacity(0.15))
-
+                
                 HStack {
                     Label(object.formattedDate, systemImage: "calendar")
                     Spacer()
@@ -158,6 +173,26 @@ struct IdentifyView: View {
             .padding(.vertical, 12)
             .background(.ultraThinMaterial)
             .clipShape(Capsule())
+            
+            // Boton para identificacion
+            Button {
+                isProcessingIdentification = true
+                triggerScan = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "viewfinder.circle.fill")
+                        .font(.title3)
+                    Text("Identificar figura")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.orange)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: .orange.opacity(0.3), radius: 8, y: 4)
+            }
+            .disabled(isProcessingIdentification)
         }
     }
 }
