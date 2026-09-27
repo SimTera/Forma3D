@@ -79,7 +79,6 @@ final class ScanViewModel {
         try? FileManager.default.createDirectory(at: scansDir, withIntermediateDirectories: true)
         
         let finalModelURL = appSupport.appending(path: relativeUSDZ)
-        let finalARObjectURL = appSupport.appending(path: relativeARObject)
         
         do {
             // Ejecución desacoplada del hilo principal
