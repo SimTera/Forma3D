@@ -6,6 +6,14 @@
 	objectVersion = 110;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4084B2A330699B1F009F078B /* ESTRUCTURA_MVVM_ANALISIS.md in Resources */ = {isa = PBXBuildFile; fileRef = 4084B2A230699B1F009F078B /* ESTRUCTURA_MVVM_ANALISIS.md */; };
+		4084B2A530699B5A009F078B /* ARQUITECTURA_README.md in Resources */ = {isa = PBXBuildFile; fileRef = 4084B2A430699B5A009F078B /* ARQUITECTURA_README.md */; };
+		4084B2A730699B83009F078B /* GUIA_REORGANIZACION_XCODE.md in Resources */ = {isa = PBXBuildFile; fileRef = 4084B2A630699B83009F078B /* GUIA_REORGANIZACION_XCODE.md */; };
+		4084B2A930699BEF009F078B /* PRESENTACION_HACKATHON.md in Resources */ = {isa = PBXBuildFile; fileRef = 4084B2A830699BEF009F078B /* PRESENTACION_HACKATHON.md */; };
+		4084B2AB30699C40009F078B /* RESUMEN_EJECUTIVO.md in Resources */ = {isa = PBXBuildFile; fileRef = 4084B2AA30699C40009F078B /* RESUMEN_EJECUTIVO.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		40BEBCBD30603C6A00C99AD6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +32,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		4084B2A230699B1F009F078B /* ESTRUCTURA_MVVM_ANALISIS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ESTRUCTURA_MVVM_ANALISIS.md; sourceTree = "<group>"; };
+		4084B2A430699B5A009F078B /* ARQUITECTURA_README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ARQUITECTURA_README.md; sourceTree = "<group>"; };
+		4084B2A630699B83009F078B /* GUIA_REORGANIZACION_XCODE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIA_REORGANIZACION_XCODE.md; sourceTree = "<group>"; };
+		4084B2A830699BEF009F078B /* PRESENTACION_HACKATHON.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PRESENTACION_HACKATHON.md; sourceTree = "<group>"; };
+		4084B2AA30699C40009F078B /* RESUMEN_EJECUTIVO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = RESUMEN_EJECUTIVO.md; sourceTree = "<group>"; };
 		40BEBCAF30603C6900C99AD6 /* Forma3D.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Forma3D.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		40BEBCBC30603C6A00C99AD6 /* Forma3DTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Forma3DTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		40BEBCC630603C6A00C99AD6 /* Forma3DUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Forma3DUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -72,6 +85,11 @@
 				40BEBCB130603C6900C99AD6 /* Forma3D */,
 				40BEBCBF30603C6A00C99AD6 /* Forma3DTests */,
 				40BEBCC930603C6A00C99AD6 /* Forma3DUITests */,
+				4084B2A230699B1F009F078B /* ESTRUCTURA_MVVM_ANALISIS.md */,
+				4084B2A430699B5A009F078B /* ARQUITECTURA_README.md */,
+				4084B2A630699B83009F078B /* GUIA_REORGANIZACION_XCODE.md */,
+				4084B2A830699BEF009F078B /* PRESENTACION_HACKATHON.md */,
+				4084B2AA30699C40009F078B /* RESUMEN_EJECUTIVO.md */,
 				40BEBCB030603C6900C99AD6 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -197,6 +215,11 @@
 		40BEBCAD30603C6900C99AD6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
+				4084B2A930699BEF009F078B /* PRESENTACION_HACKATHON.md in Resources */,
+				4084B2AB30699C40009F078B /* RESUMEN_EJECUTIVO.md in Resources */,
+				4084B2A330699B1F009F078B /* ESTRUCTURA_MVVM_ANALISIS.md in Resources */,
+				4084B2A730699B83009F078B /* GUIA_REORGANIZACION_XCODE.md in Resources */,
+				4084B2A530699B5A009F078B /* ARQUITECTURA_README.md in Resources */,
 			);
 		};
 		40BEBCBA30603C6A00C99AD6 /* Resources */ = {
