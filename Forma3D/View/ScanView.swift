@@ -28,25 +28,18 @@ struct ScanView: View {
             Color.black.ignoresSafeArea()
             
             if let session = viewModel.session, !viewModel.isReconstructing {
-                // Vista nativa de Apple con guías AR y feedback en tiempo real
                 ObjectCaptureView(session: session)
                     .ignoresSafeArea()
                 
-                // Controles contextuales según estado del escaneo
                 VStack {
                     Spacer()
-                    
                     bottomControls(for: session)
                         .padding(.horizontal, 24)
                         .padding(.bottom, 30)
                 }
-                
             } else if viewModel.isReconstructing {
-                // Pantalla de procesamiento fotogramétrico
                 reconstructionOverlay
-                
             } else {
-                // Estado inicial: cargando sesión
                 ProgressView("Iniciando escáner...")
                     .foregroundStyle(.white)
             }
@@ -89,23 +82,19 @@ struct ScanView: View {
     }
     
     // MARK: - Bottom Controls
-    /// Botones contextuales que cambian según el estado de ObjectCaptureSession
     @ViewBuilder
     private func bottomControls(for session: ObjectCaptureSession) -> some View {
         switch session.state {
         case .ready:
-            // Estado inicial: Usuario enfoca el objeto y fija el bounding box
             actionButton(
                 title: "Fijar Objeto",
                 icon: "viewfinder",
                 color: .blue
             ) {
                 _ = session.startDetecting()
-//                session.startDetecting()
             }
             
         case .detecting:
-            // Ajustando caja delimitadora: Confirmar para iniciar la captura de fotos
             actionButton(
                 title: "Iniciar Escaneo",
                 icon: "record.circle",
@@ -115,10 +104,8 @@ struct ScanView: View {
             }
             
         case .capturing:
-            // Capturando fotos: Mostrar botón de finalizar cuando complete la órbita, opcion enriquecer modelo
             if session.userCompletedScanPass {
                 VStack(spacing: 12) {
-                    // Opción 1: Procesar con los datos actuales
                     actionButton(
                         title: "Finalizar y Procesar",
                         icon: "checkmark.circle.fill",
@@ -127,18 +114,15 @@ struct ScanView: View {
                         showSaveDialog = true
                     }
                     
-                    // Opción 2: Continuar con otra altura (por ejemplo, a 45° desde arriba)
                     actionButton(
                         title: "Capturar otro ángulo (+ Detalle)",
                         icon: "arrow.triangle.2.circlepath",
                         color: .secondary
                     ) {
-                        // Inicia una nueva pasada orbital sobre la misma sesión
                         session.beginNewScanPass()
                     }
                 }
             } else {
-                // Durante la captura, ObjectCaptureView dibuja su propia cúpula y flechas nativas
                 EmptyView()
             }
             
@@ -148,7 +132,6 @@ struct ScanView: View {
     }
     
     // MARK: - Action Button
-    /// Botón de acción reutilizable con diseño consistente
     private func actionButton(
         title: String,
         icon: String,
@@ -167,7 +150,6 @@ struct ScanView: View {
     }
     
     // MARK: - Reconstruction Overlay
-    /// Pantalla de procesamiento fotogramétrico con barra de progreso
     private var reconstructionOverlay: some View {
         VStack(spacing: 24) {
             ProgressView(value: viewModel.reconstructionProgress, total: 1.0)

@@ -61,7 +61,7 @@ Forma3D/
 │   │   └── ObjectDetailView.swift    # Visor 3D interactivo
 │   ├── Identify/
 │   │   └── IdentifyView.swift        # AR de reconocimiento
-│   └── Guides/
+│   └── Guides/ PROXIMAMENTE
 │       ├── GuideEditorView.swift     # Editor de anotaciones AR
 │       ├── GuideViewerView.swift     # Visor de guías
 │       └── GuideLibraryView.swift    # Biblioteca de guías

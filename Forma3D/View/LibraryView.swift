@@ -11,25 +11,20 @@ import SwiftUI
 import SwiftData
 
 struct LibraryView: View {
-    // MARK: - SwiftData
+    // MARK: - SwiftData & ViewModel
     @Environment(\.modelContext) private var modelContext
-    
     @Query(sort: \ScannedObject.dateScanned, order: .reverse)
     private var scannedObjects: [ScannedObject]
+
+    @State private var viewModel = LibraryViewModel()
 
     // MARK: - Body
     var body: some View {
         ZStack {
             backgroundGradient
-            
+
             if scannedObjects.isEmpty {
-                // API moderna de SwiftUI para estados vacíos
-                ContentUnavailableView(
-                    "Biblioteca Vacía",
-                    systemImage: "cube.transparent",
-                    description: Text("Escanea y modela tu primer objeto 3D para verlo aquí.")
-                )
-                .foregroundStyle(.white)
+                emptyStateView
             } else {
                 objectsList
             }
@@ -39,7 +34,7 @@ struct LibraryView: View {
         .preferredColorScheme(.dark)
     }
 
-    // MARK: - Views
+    // MARK: - Subviews
     private var backgroundGradient: some View {
         LinearGradient(
             colors: [
@@ -52,6 +47,15 @@ struct LibraryView: View {
         .ignoresSafeArea()
     }
 
+    private var emptyStateView: some View {
+        ContentUnavailableView(
+            "Biblioteca Vacía",
+            systemImage: "cube.transparent",
+            description: Text("Escanea y modela tu primer objeto 3D para verlo aquí.")
+        )
+        .foregroundStyle(.white)
+    }
+
     private var objectsList: some View {
         List {
             ForEach(scannedObjects) { object in
@@ -60,19 +64,42 @@ struct LibraryView: View {
                 }
                 .listRowBackground(Color.white.opacity(0.05))
             }
-            .onDelete(perform: deleteObjects)
+            .onDelete { offsets in
+                if let firstIndex = offsets.first, scannedObjects.indices.contains(firstIndex) {
+                    viewModel.objectPendingDeletion = scannedObjects[firstIndex]
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .confirmationDialog(
+            "¿Eliminar modelo 3D?",
+            isPresented: Binding(
+                get: { viewModel.objectPendingDeletion != nil },
+                set: { if !$0 { viewModel.objectPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: viewModel.objectPendingDeletion
+        ) { target in
+            Button("Eliminar \"\(target.name)\"", role: .destructive) {
+                viewModel.deleteObjects([target], context: modelContext)
+                viewModel.objectPendingDeletion = nil
+            }
+            Button("Cancelar", role: .cancel) {
+                viewModel.objectPendingDeletion = nil
+            }
+        } message: { target in
+            Text("Esta acción eliminará el archivo 3D (\(target.formattedFileSize)) y todos los datos asociados de forma permanente.")
         }
         .scrollContentBackground(.hidden)
     }
-    
+
     private func objectRow(for object: ScannedObject) -> some View {
         HStack(spacing: 16) {
-            // Icono o miniatura
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(.ultraThinMaterial)
                     .frame(width: 54, height: 54)
-                
+
                 Image(systemName: "cube.fill")
                     .font(.title2)
                     .foregroundStyle(.purple)
@@ -94,30 +121,12 @@ struct LibraryView: View {
         }
         .padding(.vertical, 4)
     }
-
-    // MARK: - Actions
-    private func deleteObjects(at offsets: IndexSet) {
-        for index in offsets {
-            let object = scannedObjects[index]
-            
-            // 1. Borrar archivos físicos asociados en disco para no dejar huérfanos
-            try? FileManager.default.removeItem(at: object.modelURL)
-            try? FileManager.default.removeItem(at: object.arObjectURL)
-            if let thumbURL = object.thumbnailURL {
-                try? FileManager.default.removeItem(at: thumbURL)
-            }
-            
-            // 2. Borrar registro en SwiftData
-            modelContext.delete(object)
-        }
-    }
 }
 
+// MARK: - Preview
 #Preview {
     NavigationStack {
         LibraryView()
             .modelContainer(for: ScannedObject.self, inMemory: true)
     }
 }
-
-

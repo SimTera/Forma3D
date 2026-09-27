@@ -25,7 +25,7 @@
 - **SCAN** → Azul
 - **LIBRARY** → Morado
 - **IDENTIFY** → Naranja
-- **GUIDES** → Verde
+- **GUIDES** → Verde PROXIMAMENTE
 
 ---
 
@@ -75,7 +75,7 @@
 
 ---
 
-### 5️⃣ GUÍAS INTERACTIVAS (60 seg)
+### 5️⃣ GUÍAS INTERACTIVAS (60 seg) PROXIMAMENTE
 **Mostrar**: GuideEditorView → GuideViewerView
 
 **Decir**:

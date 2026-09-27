@@ -10,18 +10,15 @@
 
 import SwiftUI
 import RealityKit
+import OSLog
 
 struct ObjectDetailView: View {
-    // MARK: - Properties
-    let object: ScannedObject
+    // MARK: - ViewModel
+    @State private var viewModel: ObjectDetailViewModel
     
-    // MARK: - Gesture State (3D Manipulation)
-        @State private var orientation = simd_quatf(angle: 0, axis: [0, 1, 0])
-        @State private var dragOffset: CGSize = .zero
-        
-        @State private var baseScale: Float = 1.0
-        @State private var currentScale: Float = 1.0
-        @State private var gestureScale: Float = 1.0
+    init(object: ScannedObject) {
+        _viewModel = State(initialValue: ObjectDetailViewModel(object: object))
+    }
     
     // MARK: - Body
     var body: some View {
@@ -45,159 +42,146 @@ struct ObjectDetailView: View {
             }
             .padding(20)
         }
-        .navigationTitle(object.name)
+        .navigationTitle(viewModel.object.name)
         .navigationBarTitleDisplayMode(.inline)
         .background(Color.black.ignoresSafeArea())
     }
     
-    // MARK: - 3D Viewer Section (Multiplataforma)
-        @ViewBuilder
-        private var modelViewerSection: some View {
-            if FileManager.default.fileExists(atPath: object.modelURL.path(percentEncoded: false)) {
+    // MARK: - 3D Viewer Section
+    @ViewBuilder
+    private var modelViewerSection: some View {
+        if viewModel.isModelFileAvailable {
 #if os(visionOS) || os(macOS)
-                // Visor nativo con volumen espacial para visionOS / macOS
-                Model3D(url: object.modelURL) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView("Cargando malla 3D...")
-                            .tint(.white)
-                    case .success(let resolvedModel):
-                        resolvedModel
-                            .resizable()
-                            .scaledToFit()
-                            .padding(24)
-                    case .failure(let error):
-                        ContentUnavailableView(
-                            "Error al cargar",
-                            systemImage: "exclamationmark.triangle",
-                            description: Text(error.localizedDescription)
-                        )
-                    @unknown default:
-                        EmptyView()
-                    }
+            Model3D(url: viewModel.object.modelURL) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView("Cargando malla 3D...")
+                        .tint(.white)
+                case .success(let resolvedModel):
+                    resolvedModel
+                        .resizable()
+                        .scaledToFit()
+                        .padding(24)
+                case .failure(let error):
+                    ContentUnavailableView(
+                        "Error al cargar",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text(error.localizedDescription)
+                    )
+                @unknown default:
+                    EmptyView()
                 }
-#else
-                // Visor nativo RealityView para iOS 18+
-                ZStack {
-                    RealityView { content in
-                        do {
-                            let rootAnchor = Entity()
-                            rootAnchor.name = "rootAnchor"
-                            
-                            let modelEntity = try await Entity(contentsOf: object.modelURL)
-                            modelEntity.name = "modelEntity"
-                            
-                            // 1. Centrar el pivote del modelo usando su BoundingBox real
-                            let bounds = modelEntity.visualBounds(relativeTo: nil)
-                            let center = bounds.center
-                            modelEntity.position = -center
-                            
-                            // 2. Normalizar escala para que quepa en el visor si es muy grande o muy pequeño
-                            let maxDimension = max(bounds.extents.x, max(bounds.extents.y, bounds.extents.z))
-                            if maxDimension > 0 {
-                                let targetSize: Float = 0.25 // ~25 cm virtuales en pantalla
-                                let initialScale = targetSize / maxDimension
-                                baseScale = initialScale
-                                rootAnchor.scale = SIMD3<Float>(repeating: initialScale)
-                            }
-                            
-                            rootAnchor.addChild(modelEntity)
-                            content.add(rootAnchor)
-                        } catch {
-                            print("Error cargando Entity en RealityView: \(error)")
-                        }
-                    } update: { content in
-                        guard let rootAnchor = content.entities.first(where: { $0.name == "rootAnchor" }) else { return }
-                        
-                        // Rotación en tiempo real (inercia arrastre + orientación guardada)
-                        let pitchAngle = Float(dragOffset.height) * 0.015
-                        let yawAngle = Float(dragOffset.width) * 0.015
-                        
-                        let pitchQuat = simd_quatf(angle: pitchAngle, axis: [1, 0, 0])
-                        let yawQuat = simd_quatf(angle: yawAngle, axis: [0, 1, 0])
-                        
-                        rootAnchor.orientation = yawQuat * pitchQuat * orientation
-                        
-                        // Escala reactiva
-                        let effectiveZoom = currentScale * gestureScale
-                        rootAnchor.scale = SIMD3<Float>(repeating: baseScale * effectiveZoom)
-                    } placeholder: {
-                        ProgressView("Cargando modelo 3D...")
-                            .tint(.white)
-                    }
-                    .contentShape(Rectangle()) // Fuerza a toda el área a registrar toques
-                    .gesture(rotationAndScaleGesture)
-                    
-                    // Guía visual interactiva
-                    VStack {
-                        Spacer()
-                        HStack(spacing: 8) {
-                            Image(systemName: "hand.draw")
-                            Text("Arrastra con un dedo para rotar • Pellizca con dos para zoom")
-                        }
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
-                        .padding(.bottom, 12)
-                    }
-                }
-                #endif
-            } else {
-                ContentUnavailableView(
-                    "Archivo no encontrado",
-                    systemImage: "shippingbox.and.arrow.backward",
-                    description: Text("El archivo USDZ no está presente en el almacenamiento local.")
-                )
             }
+#else
+            ZStack {
+                RealityView { content in
+                    do {
+                        let rootAnchor = Entity()
+                        rootAnchor.name = "rootAnchor"
+                        
+                        let modelEntity = try await Entity(contentsOf: viewModel.object.modelURL)
+                        modelEntity.name = "modelEntity"
+                        
+                        // Centrado y escala normalizada calculados en el ViewModel
+                        let initialScale = viewModel.normalize(entity: modelEntity)
+                        rootAnchor.scale = SIMD3<Float>(repeating: initialScale)
+                        
+                        rootAnchor.addChild(modelEntity)
+                        content.add(rootAnchor)
+                    } catch {
+                        Logger.objectDetail.error("Error cargando Entity en RealityView: \(error.localizedDescription, privacy: .public)")
+                    }
+                } update: { content in
+                    guard let rootAnchor = content.entities.first(where: { $0.name == "rootAnchor" }) else { return }
+                    
+                    // Rotación y escala dirigidas por el ViewModel
+                    rootAnchor.orientation = viewModel.liveOrientation
+                    rootAnchor.scale = viewModel.computedScale
+                } placeholder: {
+                    ProgressView("Cargando modelo 3D...")
+                        .tint(.white)
+                }
+                .contentShape(Rectangle())
+                .gesture(rotationAndScaleGesture)
+                
+                // Guía visual interactiva
+                interactionOverlay
+            }
+#endif
+        } else {
+            ContentUnavailableView(
+                "Archivo no encontrado",
+                systemImage: "shippingbox.and.arrow.backward",
+                description: Text("El archivo USDZ no está presente en el almacenamiento local.")
+            )
         }
+    }
+    
+    private var interactionOverlay: some View {
+        VStack {
+            HStack {
+                Spacer()
+                if viewModel.isTransformed {
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            viewModel.resetTransform()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(8)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                    }
+                    .transition(.scale.combined(with: .opacity))
+                    .padding(12)
+                }
+            }
+            
+            Spacer()
+            
+            HStack(spacing: 8) {
+                Image(systemName: "hand.draw")
+                Text("Arrastra para rotar • Pellizca para zoom")
+            }
+            .font(.caption2)
+            .foregroundStyle(.white.opacity(0.6))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(.ultraThinMaterial)
+            .clipShape(Capsule())
+            .padding(.bottom, 12)
+        }
+    }
     
     // MARK: - Gestures
-        private var rotationAndScaleGesture: some Gesture {
-            // Gesto de rotación en 2 ejes (Yaw y Pitch)
-            let drag = DragGesture()
-                .onChanged { value in
-                    dragOffset = value.translation
-                }
-                .onEnded { value in
-                    let pitchAngle = Float(value.translation.height) * 0.015
-                    let yawAngle = Float(value.translation.width) * 0.015
-                    let pitchQuat = simd_quatf(angle: pitchAngle, axis: [1, 0, 0])
-                    let yawQuat = simd_quatf(angle: yawAngle, axis: [0, 1, 0])
-                    
-                    // Consolidar rotación permanente
-                    orientation = yawQuat * pitchQuat * orientation
-                    dragOffset = .zero
-                }
-            
-            // Gesto de magnificación / zoom con amortiguacion
-            let magnify = MagnifyGesture()
-                .onChanged { value in
-                    let sensitivity: Float = 0.25
-                    let delta = (Float(value.magnification) - 1.0) * sensitivity
-                    gestureScale = max(0.5, min(3.5, 1.0 + delta))
-                }
-                .onEnded { value in
-                    let sensitivity: Float = 0.25
-                    let delta = (Float(value.magnification) - 1.0) * sensitivity
-                    let appliedDelta = 1.0 + delta
-                    
-                    currentScale = max(0.4, min(11.0, currentScale * appliedDelta))
-                    gestureScale = 1.0
-                }
-            
-            // Ejecutan en paralelo para permitir rotar y ampliar simultáneamente
-            return drag.simultaneously(with: magnify)
-        }
+    private var rotationAndScaleGesture: some Gesture {
+        let drag = DragGesture()
+            .onChanged { value in
+                viewModel.updateDragTranslation(value.translation)
+            }
+            .onEnded { value in
+                viewModel.commitDragTranslation(value.translation)
+            }
+        
+        let magnify = MagnifyGesture()
+            .onChanged { value in
+                viewModel.updateMagnification(value.magnification)
+            }
+            .onEnded { value in
+                viewModel.commitMagnification(value.magnification)
+            }
+        
+        return drag.simultaneously(with: magnify)
+    }
     
     // MARK: - Metadata Section
     private var metadataSection: some View {
         VStack(spacing: 14) {
-            metadataRow(icon: "calendar", title: "Fecha de captura", value: object.formattedDate)
+            metadataRow(icon: "calendar", title: "Fecha de captura", value: viewModel.object.formattedDate)
             Divider().background(Color.white.opacity(0.1))
-            metadataRow(icon: "internaldrive", title: "Tamaño del archivo", value: object.formattedFileSize)
+            metadataRow(icon: "internaldrive", title: "Tamaño del archivo", value: viewModel.object.formattedFileSize)
             Divider().background(Color.white.opacity(0.1))
             metadataRow(icon: "cube.transparent", title: "Formato", value: "Universal Scene Description (.usdz)")
         }
@@ -223,8 +207,8 @@ struct ObjectDetailView: View {
     private var actionSection: some View {
         VStack(spacing: 12) {
             ShareLink(
-                item: object.modelURL,
-                preview: SharePreview(object.name, icon: Image(systemName: "cube"))
+                item: viewModel.object.modelURL,
+                preview: SharePreview(viewModel.object.name, icon: Image(systemName: "cube"))
             ) {
                 Label("Exportar Archivo USDZ", systemImage: "square.and.arrow.up")
                     .font(.headline)

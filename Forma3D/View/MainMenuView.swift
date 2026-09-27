@@ -21,6 +21,13 @@ struct MainMenuView: View {
     @State private var navigationPath = NavigationPath()
     @State private var animateHeader = false
     
+    // MARK: - Computed Properties
+    /// Lee la versión configurada en el Target de Xcode (General > Version)
+    private var appVersionString: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.9.7"
+        return "v\(version)"
+    }
+    
     // MARK: - Body
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -141,7 +148,7 @@ struct MainMenuView: View {
     // MARK: - Footer
     private var footerView: some View {
         VStack(spacing: 4) {
-            Text("v1.0.0 Beta")
+            Text(appVersionString)
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.5))
             
